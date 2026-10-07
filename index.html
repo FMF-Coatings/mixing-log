@@ -64,7 +64,12 @@
     background: var(--off-white); transition: border-color 0.2s, box-shadow 0.2s;
     -webkit-appearance: none; appearance: none; outline: none;
   }
-  input:focus { border-color: var(--brand); background: white; box-shadow: 0 0 0 3px rgba(0,75,142,0.1); }
+  textarea {
+    width: 100%; padding: 13px 16px; border: 2px solid var(--border); border-radius: 10px;
+    font-family: 'Barlow', sans-serif; font-size: 1rem; font-weight: 500; line-height: 1.35; color: var(--text);
+    background: var(--off-white); transition: border-color 0.2s, box-shadow 0.2s; resize: none; outline: none; display: block;
+  }
+  input:focus, textarea:focus { border-color: var(--brand); background: white; box-shadow: 0 0 0 3px rgba(0,75,142,0.1); }
   input[disabled] { color: var(--text-muted); background: var(--border); }
 
   .form-grid { display: grid; grid-template-columns: 1fr; column-gap: 20px; }
@@ -185,6 +190,7 @@
   table.archive tbody tr:hover td { background: #f8fbff; }
   table.archive td.nowrap { white-space: nowrap; }
   table.archive td.wrap { min-width: 160px; }
+  table.archive td.pre { white-space: pre-line; }
 
   /* ── MANAGER TABS + MIXER ADMIN ── */
   .tabs { display: flex; gap: 6px; margin-bottom: 18px; border-bottom: 2px solid var(--border); }
@@ -224,34 +230,34 @@
   .toast.err { background: var(--error); }
   @media (prefers-reduced-motion: reduce) { .toast { transition: none; } * { scroll-behavior: auto !important; } }
 
-  /* ── PRINT LABEL ── */
+  /* ── PRINT LABEL (88 x 36mm stock) ── */
   /* Kept in normal layout (off-screen, not display:none) so JS can measure
-     its real rendered height before printing and shrink fonts to fit. */
+     its real rendered height before printing and shrink the text to fit. */
   #printLabel {
     position: fixed;
     top: 0; left: -9999px;
     width: 88mm; height: 36mm;
-    padding: 2mm 3mm;
+    padding: 3mm 2.6mm 2.4mm 6.5mm;   /* JS re-applies these from the LABEL_PAD constants */
     box-sizing: border-box;
     overflow: visible;
-    font-family: 'Barlow', sans-serif;
+    font-family: Arial, 'Liberation Sans', Helvetica, sans-serif;
     color: #000;
     overflow-wrap: anywhere;
     visibility: hidden;
     pointer-events: none;
     z-index: -1;
   }
-  #printLabel .pl-customer {
-    font-family: 'Barlow Condensed', sans-serif;
-    font-weight: 800; text-transform: uppercase;
-    margin-bottom: 1mm;
-  }
-  #printLabel .pl-colour { font-weight: 700; text-transform: uppercase; margin-bottom: 0.8mm; }
-  #printLabel .pl-line { text-transform: uppercase; margin-bottom: 0.3mm; }
-  #printLabel #plInner { display: flow-root; }
-  #printLabel .pl-date {
-    font-size: 9pt !important; color: #000; margin-top: 1mm;
-  }
+  /* Matches the existing FMF label: Arial Bold capitals, customer underlined,
+     date in regular weight and mixed case, logo bottom right. */
+  #printLabel #plInner { display: flow-root; font-size: 10.2pt; line-height: 1.15; font-weight: 700; text-transform: uppercase; }
+  #printLabel .pl-customer { text-decoration: underline; }
+  #printLabel .pl-date { font-weight: 400; text-transform: none; margin-top: 0.5mm; }
+  #printLabel #plLogo { position: absolute; right: 2.6mm; bottom: 2.4mm; line-height: 1; }
+  #printLabel #plLogo img { display: block; height: 5.7mm; width: auto; }
+  #printLabel #plLogo .pl-logo-text { font-family: Arial, 'Liberation Sans', sans-serif; font-weight: 900; font-style: italic; font-size: 17pt; letter-spacing: -0.5pt; }
+
+  /* Printer test label (see Print test label) */
+  #calLabel { display: none; }
 
   @page { size: 88mm 36mm; margin: 0; }
   @media print {
@@ -259,11 +265,15 @@
        is not enough: the hidden page would still occupy space and paginate,
        and a fixed-position label repeats on every page = many labels. */
     html, body { margin: 0; padding: 0; background: #fff; height: 36mm; overflow: hidden; }
-    body > *:not(#printLabel) { display: none !important; }
+    body > *:not(#printLabel):not(#calLabel) { display: none !important; }
+    body.printing-cal #printLabel { display: none !important; }
+    body:not(.printing-cal) #calLabel { display: none !important; }
+    body.printing-cal #calLabel { display: block; width: 88mm; height: 35.8mm; overflow: hidden; }
+    #calLabel svg { display: block; }
     #printLabel {
       display: block;
       visibility: visible;
-      position: static;
+      position: relative;
       left: auto; top: auto;
       width: 88mm; height: 35mm;
       overflow: hidden; /* final safety net only; the shrink loop should already fit */
@@ -342,8 +352,8 @@
 
           <div class="field span2">
             <label class="field-label" for="colour">Colour</label>
-            <div class="field-hint">e.g. Mercedes-Benz Black / Jet Black (040/9040)</div>
-            <input type="text" id="colour" maxlength="200" required />
+            <div class="field-hint">Press Enter for a second line, e.g. KIA H8G, then DARK PENTA on the next line</div>
+            <textarea id="colour" rows="2" maxlength="200" required></textarea>
           </div>
 
           <div class="field span2">
@@ -430,6 +440,7 @@
         <div class="header-sub">Signed in as <span id="mgrEmail"></span></div>
       </div>
       <div class="header-right">
+        <button type="button" class="pill-btn" id="mgrCalBtn">Print test label</button>
         <button type="button" class="pill-btn" id="mgrToMixerBtn">Sign out</button>
       </div>
     </div>
@@ -536,13 +547,14 @@
 <div id="printLabel">
   <div id="plInner">
     <div class="pl-customer" id="plCustomer"></div>
-    <div class="pl-colour" id="plColour"></div>
-    <div class="pl-line" id="plShadeVariant"></div>
-    <div class="pl-line" id="plSystem"></div>
-    <div class="pl-line" id="plAmount"></div>
-    <div class="pl-line pl-date" id="plDate"></div>
+    <div id="plBody"></div>
+    <div class="pl-date" id="plDate"></div>
   </div>
+  <div id="plLogo"></div>
 </div>
+
+<!-- Printer test label: shows exactly how the printer scales and offsets the page -->
+<div id="calLabel"><svg id="calSvg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 88 35.8" width="88mm" height="35.8mm"></svg></div>
 
 <script>
 (function () {
@@ -613,9 +625,9 @@
     if (isNaN(d)) return '';
     return d.toLocaleString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
   }
-  function fmtDateLabel(iso) { // DD/MM/YYYY
+  function fmtDateLabel(iso) { // 07 October 2026 (matches the existing label)
     const d = new Date(iso);
-    return (isNaN(d) ? new Date() : d).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    return (isNaN(d) ? new Date() : d).toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' });
   }
   function fmtIsoLocal(iso) { // 2026-10-07 14:32:05 (unambiguous in Excel)
     const d = new Date(iso);
@@ -811,66 +823,99 @@
   // ───────── Label printing ─────────
   // window.print() against a page sized 88mm x 36mm. See @media print CSS:
   // only #printLabel exists in print layout, so exactly one label is printed.
-  // The CSS above uses the same label size and padding (88 x 36mm, 3mm / 2mm).
-  const LABEL_PAD_X_MM = 3;
-  const LABEL_PAD_Y_MM = 2;
-  const LABEL_SAFE_HEIGHT_MM = 31;  // usable text height; leaves room for the printer's unprintable edge
-  const LABEL_SHIFT_X_MM = 0;       // nudge all text right (+) or left (-) if the printer offsets it
-  const LABEL_SHIFT_Y_MM = 0;       // nudge all text down (+) or up (-)
+  const LABEL_FONT_PT = 10.2;                // existing label measures as Arial Bold ~10.2pt
+  const LABEL_PAD = { top: 3, right: 2.6, bottom: 2.4, left: 6.5 }; // mm, measured from the existing label
+  const LABEL_SHIFT_X_MM = 0;                // nudge all text right (+) or left (-) to correct printer offset
+  const LABEL_SHIFT_Y_MM = 0;                // nudge all text down (+) or up (-)
+  const LABEL_SPLIT_COLOUR_ON_SLASH = false; // true = also split a colour typed as "KIA H8G / DARK PENTA" onto two lines
+  const LABEL_VARIANT_FIRST = true;          // prints "GR5987K STD SHADE" (variant, then shade)
+  const LABEL_LOGO_SRC = '';                 // data: URI or file path of the logo; empty = text placeholder
+  const LABEL_LOGO_PLACEHOLDER = 'FMF';      // shown only while LABEL_LOGO_SRC is empty; '' hides it
+  const LABEL_HEIGHT_MM = 36;
   const MM_TO_PX = 96 / 25.4;
+
+  function initLabelLogo() {
+    const el = $('plLogo');
+    if (LABEL_LOGO_SRC) el.innerHTML = '<img alt="" src="' + escapeHtml(LABEL_LOGO_SRC) + '">';
+    else if (LABEL_LOGO_PLACEHOLDER) el.innerHTML = '<div class="pl-logo-text">' + escapeHtml(LABEL_LOGO_PLACEHOLDER) + '</div>';
+    else el.innerHTML = '';
+  }
+
+  // Body lines under the customer name: colour (optionally split on " / "),
+  // shade + variant, paint system, amount.
+  function labelLines(record) {
+    const lines = [];
+    // Each line typed in the Colour box becomes its own label line.
+    String(record.colour || '').split(/\r?\n/)
+      .flatMap(l => LABEL_SPLIT_COLOUR_ON_SLASH ? l.split(/\s+\/\s+/) : [l])
+      .forEach(part => { part = part.trim(); if (part) lines.push(part); });
+    const sv = (LABEL_VARIANT_FIRST ? [record.variant, record.shade] : [record.shade, record.variant])
+      .map(x => String(x || '').trim()).filter(Boolean).join(' ');
+    if (sv) lines.push(sv);
+    if (record.paint_system) lines.push(String(record.paint_system).trim());
+    if (record.amount) lines.push(String(record.amount).trim());
+    return lines;
+  }
 
   function printMixLabel(record) {
     $('plCustomer').textContent = record.customer_name || '';
-    $('plColour').textContent = record.colour || '';
-
-    const shadeVariant = [record.shade, record.variant].filter(Boolean).join(' / ');
-    const shadeEl = $('plShadeVariant');
-    shadeEl.textContent = shadeVariant;
-    shadeEl.style.display = shadeVariant ? '' : 'none';
-
-    $('plSystem').textContent = record.paint_system || '';
-    $('plAmount').textContent = record.amount || '';
+    $('plBody').innerHTML = labelLines(record).map(l => '<div class="pl-line">' + escapeHtml(l) + '</div>').join('');
     $('plDate').textContent = fmtDateLabel(record.created_at); // original mix date, so reprints match
-
     fitPrintLabel();
     window.print();
   }
 
-  // Starts at a large size and shrinks the text proportionally until the
-  // CONTENT fits the label. It measures #plInner (the text block), not the
-  // label box: the box is a fixed 36mm tall, so measuring it always reads
-  // "too big" and shrinks the text to the minimum every time.
+  // Starts at the existing label's size and only shrinks (proportionally) if the
+  // CONTENT doesn't fit. It measures #plInner (the text block), not the label
+  // box: the box is a fixed 36mm tall, so measuring it would always read
+  // "too big" and shrink the text to the minimum every time.
   function fitPrintLabel() {
     const label = $('printLabel');
     const inner = $('plInner');
-    label.style.paddingLeft = Math.max(0, LABEL_PAD_X_MM + LABEL_SHIFT_X_MM) + 'mm';
-    label.style.paddingTop = Math.max(0, LABEL_PAD_Y_MM + LABEL_SHIFT_Y_MM) + 'mm';
-    const maxHeightPx = (LABEL_SAFE_HEIGHT_MM - Math.max(0, LABEL_SHIFT_Y_MM)) * MM_TO_PX;
+    const padTop = Math.max(0, LABEL_PAD.top + LABEL_SHIFT_Y_MM);
+    const padLeft = Math.max(0, LABEL_PAD.left + LABEL_SHIFT_X_MM);
+    label.style.padding = `${padTop}mm ${LABEL_PAD.right}mm ${LABEL_PAD.bottom}mm ${padLeft}mm`;
+    const maxHeightPx = (LABEL_HEIGHT_MM - padTop - LABEL_PAD.bottom) * MM_TO_PX;
 
-    const sizes = { customer: 20, colour: 16, line: 12 }; // pt, starting sizes (date is fixed in CSS)
-    const minScale = 0.45;
+    const minScale = 0.6;
     let scale = 1;
-
-    const customerEl = $('plCustomer');
-    const colourEl = $('plColour');
-    const lineEls = label.querySelectorAll('.pl-line:not(.pl-date)');
-
-    function applyScale(s) {
-      customerEl.style.fontSize = (sizes.customer * s) + 'pt';
-      customerEl.style.lineHeight = 1.1;
-      colourEl.style.fontSize = (sizes.colour * s) + 'pt';
-      colourEl.style.lineHeight = 1.15;
-      lineEls.forEach(el => {
-        el.style.fontSize = (sizes.line * s) + 'pt';
-        el.style.lineHeight = 1.25;
-      });
-    }
-    applyScale(scale);
+    inner.style.fontSize = (LABEL_FONT_PT * scale) + 'pt';
     while (inner.offsetHeight > maxHeightPx && scale > minScale) {
       scale -= 0.03;
-      applyScale(scale);
+      inner.style.fontSize = (LABEL_FONT_PT * scale) + 'pt';
     }
   }
+
+  // ───────── Printer test label ─────────
+  // Prints a border + millimetre rulers on the 88 x 36mm page. Measure the result
+  // on the real label: if the "80" tick sits at 60mm the printer is shrinking to
+  // 75%; if the left border is missing the page is shifted right, and so on.
+  function buildCalSvg() {
+    const NS = 'http://www.w3.org/2000/svg';
+    const W = 88, H = 35.8;
+    let g = `<rect x="0.2" y="0.2" width="${W - 0.4}" height="${H - 0.4}" fill="none" stroke="#000" stroke-width="0.3"/>`;
+    for (let x = 1; x < W; x++) {
+      const len = x % 10 === 0 ? 3 : x % 5 === 0 ? 2 : 1;
+      g += `<line x1="${x}" y1="0.2" x2="${x}" y2="${0.2 + len}" stroke="#000" stroke-width="0.2"/>`;
+      g += `<line x1="${x}" y1="${H - 0.2}" x2="${x}" y2="${H - 0.2 - len}" stroke="#000" stroke-width="0.2"/>`;
+      if (x % 10 === 0) g += `<text x="${x}" y="6.2" font-size="2.4" text-anchor="middle" font-family="Arial,sans-serif">${x}</text>`;
+    }
+    for (let y = 1; y < H; y++) {
+      const len = y % 10 === 0 ? 3 : y % 5 === 0 ? 2 : 1;
+      g += `<line x1="0.2" y1="${y}" x2="${0.2 + len}" y2="${y}" stroke="#000" stroke-width="0.2"/>`;
+      g += `<line x1="${W - 0.2}" y1="${y}" x2="${W - 0.2 - len}" y2="${y}" stroke="#000" stroke-width="0.2"/>`;
+      if (y % 10 === 0) g += `<text x="4" y="${y + 0.8}" font-size="2.4" font-family="Arial,sans-serif">${y}</text>`;
+    }
+    g += `<text x="44" y="15" font-size="3.6" font-weight="700" text-anchor="middle" font-family="Arial,sans-serif">88 x 36 mm</text>`;
+    g += `<text x="44" y="23.6" font-size="2.2" text-anchor="middle" font-family="Arial,sans-serif">Ticks are in mm. Border should touch the label edges.</text>`;
+    $('calSvg').innerHTML = g;
+  }
+  function printCalibration() {
+    buildCalSvg();
+    document.body.classList.add('printing-cal');
+    try { window.print(); } finally { document.body.classList.remove('printing-cal'); }
+  }
+  $('mgrCalBtn').addEventListener('click', printCalibration);
 
   // ───────── Reprint (last 5 labels, stored on this PC only) ─────────
   function loadRecentLabels() {
@@ -894,7 +939,7 @@
     box.innerHTML = list.map((r, i) => `
       <div class="reprint-item">
         <div class="reprint-text">
-          <div class="log-main">${escapeHtml(r.customer_name)}: ${escapeHtml(r.colour)}</div>
+          <div class="log-main">${escapeHtml(r.customer_name)}: ${escapeHtml(String(r.colour || '').replace(/\s*\n\s*/g, ' / '))}</div>
           <div class="reprint-meta">${escapeHtml(r.amount)} · ${escapeHtml(r.paint_system)} · ${escapeHtml(fmtDateTime(r.created_at))} · ${escapeHtml(r.initials)}</div>
         </div>
         <button type="button" class="secondary small" data-i="${i}">Reprint</button>
@@ -1111,7 +1156,7 @@
     { key: 'initials',        label: 'Initials',     cls: 'nowrap', fmt: r => KNOWN_NAMES[r.initials] ? `${r.initials} (${KNOWN_NAMES[r.initials]})` : r.initials },
     { key: 'account_number',  label: 'Account no.',  cls: 'nowrap' },
     { key: 'customer_name',   label: 'Customer',     cls: 'wrap' },
-    { key: 'colour',          label: 'Colour',       cls: 'wrap' },
+    { key: 'colour',          label: 'Colour',       cls: 'wrap pre' },
     { key: 'mixing_station',  label: 'Station',      cls: 'nowrap' },
     { key: 'shade',           label: 'Shade',        cls: 'nowrap' },
     { key: 'variant',         label: 'Variant',      cls: 'nowrap' },
@@ -1290,11 +1335,18 @@
   });
 
   // ───────── Deep link: index.html#manager ─────────
-  function checkHash() { if (location.hash === '#manager' && activeScreen === 'select') openManager(); }
+  function checkHash() {
+    if (location.hash === '#manager' && activeScreen === 'select') openManager();
+    if (location.hash === '#calibrate') { // index.html#calibrate prints the printer test label, no login needed
+      history.replaceState(null, '', location.pathname + location.search);
+      setTimeout(printCalibration, 300);
+    }
+  }
   checkHash();
   window.addEventListener('hashchange', checkHash);
   focusFirstBox();
   loadKnownMixers();
+  initLabelLogo();
 })();
 </script>
 
