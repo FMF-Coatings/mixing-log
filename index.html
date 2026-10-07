@@ -193,6 +193,19 @@
   table.archive td.nowrap { white-space: nowrap; }
   table.archive td.wrap { min-width: 160px; }
   table.archive td.pre { white-space: pre-line; }
+  /* keep the Reprint / delete column visible when the table is wider than the screen */
+  table.archive th:last-child, table.archive td:last-child { position: sticky; right: 0; background: #fff; box-shadow: -8px 0 8px -8px rgba(13,27,42,0.25); }
+  table.archive th:last-child { background: var(--off-white); }
+  .row-actions { display: flex; gap: 6px; align-items: center; }
+  .icon-btn {
+    display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; padding: 0;
+    border: 2px solid var(--border); border-radius: 10px; background: var(--off-white); color: var(--text-muted); cursor: pointer;
+  }
+  .icon-btn svg { width: 17px; height: 17px; }
+  .icon-btn:hover, .icon-btn:focus-visible { color: var(--error); border-color: var(--error); background: #fff; }
+  .detail-list { display: grid; grid-template-columns: 110px 1fr; gap: 6px 14px; margin: 0; font-size: 0.9rem; }
+  .detail-list dt { color: var(--text-muted); }
+  .detail-list dd { margin: 0; font-weight: 600; overflow-wrap: anywhere; }
 
   /* ── MANAGER TABS + MIXER ADMIN ── */
   .tabs { display: flex; gap: 6px; margin-bottom: 18px; border-bottom: 2px solid var(--border); }
@@ -671,6 +684,23 @@
   </div>
 </div>
 
+<!-- ═══════════ DELETE ONE RECORD ═══════════ -->
+<div class="modal-backdrop" id="rowDelModal">
+  <div class="modal danger" role="dialog" aria-modal="true" aria-labelledby="rowDelTitle">
+    <div class="modal-head">
+      <div class="modal-title" id="rowDelTitle">Delete this record?</div>
+      <button type="button" class="modal-close" id="rowDelClose" aria-label="Close">&times;</button>
+    </div>
+    <div class="info-box" id="rowDelDetails"></div>
+    <div class="warn-box"><strong>This permanently deletes the record and cannot be undone.</strong> A mixer can then log the mix again. The new record will carry the date and time it is re-entered.</div>
+    <div class="modal-actions">
+      <button type="button" class="secondary" id="rowDelCancel">Cancel</button>
+      <button type="button" class="submit danger-fill" id="rowDelGo">Delete record</button>
+    </div>
+    <div id="rowDelStatus" class="status" role="status"></div>
+  </div>
+</div>
+
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <!-- Label: laid out off-screen, shown alone when printing -->
@@ -703,7 +733,7 @@
     { name: "Ryan P",     initials: "RP" }
   ];
 
-  const BUILD_ID = 'build 2026-10-07 f';     // shown bottom of the initials screen: confirms which version a PC is running
+  const BUILD_ID = 'build 2026-10-07 g';     // shown bottom of the initials screen: confirms which version a PC is running
   const REQUIRE_ACCOUNT_NUMBER = false;      // set true to make Account Number mandatory
   const LOGO_URL = "";                       // e.g. "logo.png" once the company logo is supplied
   const REPRINT_STORAGE_KEY = 'paintmix.recentLabels.v1';
@@ -1097,7 +1127,7 @@
   $('entryReprintBtn').addEventListener('click', openReprint);
   $('reprintClose').addEventListener('click', closeReprint);
   $('reprintModal').addEventListener('click', (e) => { if (e.target === $('reprintModal')) closeReprint(); });
-  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { closeReprint(); closeExport(); closeDelete(); } });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { closeReprint(); closeExport(); closeDelete(); closeRowDelete(); } });
   $('reprintList').addEventListener('click', (e) => {
     const btn = e.target.closest('button[data-i]');
     if (!btn) return;
@@ -1130,6 +1160,8 @@
     $('summaryBody').innerHTML = '';
     summaryKey = null;
     Object.keys(exportsDone).forEach(k => delete exportsDone[k]);
+    rowDel.busy = false; rowDel.rec = null;
+    $('rowDelModal').classList.remove('open');
     del.busy = false;
     $('exportModal').classList.remove('open');
     $('deleteModal').classList.remove('open');
@@ -1400,7 +1432,8 @@
     } else {
       body.innerHTML = archiveRows.map((r, i) => '<tr>' +
         COLUMNS.map(c => `<td class="${c.cls}">${escapeHtml(c.fmt ? c.fmt(r) : r[c.key])}</td>`).join('') +
-        `<td class="nowrap"><button type="button" class="secondary small" data-reprint="${i}">Reprint</button></td></tr>`
+        `<td class="nowrap"><div class="row-actions"><button type="button" class="secondary small" data-reprint="${i}">Reprint</button>` +
+        `<button type="button" class="icon-btn" data-delete="${i}" title="Delete this record" aria-label="Delete this record">${TRASH_SVG}</button></div></td></tr>`
       ).join('');
     }
     const first = archiveTotal ? archivePage * PAGE_SIZE + 1 : 0;
@@ -1413,10 +1446,82 @@
   }
 
   $('archiveBody').addEventListener('click', (e) => {
+    const delBtn = e.target.closest('button[data-delete]');
+    if (delBtn) { const r = archiveRows[parseInt(delBtn.dataset.delete, 10)]; if (r) openRowDelete(r); return; }
     const btn = e.target.closest('button[data-reprint]');
     if (!btn) return;
     const rec = archiveRows[parseInt(btn.dataset.reprint, 10)];
     if (rec) printMixLabel(rec);
+  });
+
+  // ── Delete one record (so a mixer can log it again) ──
+  const TRASH_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></svg>';
+  const rowDel = { rec: null, busy: false };
+
+  // Identify exactly one row: by id when the table has one, otherwise by its unique timestamp plus initials and customer.
+  function rowFilter(q, r) {
+    if (r.id !== undefined && r.id !== null) return q.eq('id', r.id);
+    return q.eq('created_at', r.created_at).eq('initials', r.initials).eq('customer_name', r.customer_name);
+  }
+
+  function openRowDelete(rec) {
+    rowDel.rec = rec;
+    $('rowDelStatus').textContent = '';
+    const name = KNOWN_NAMES[rec.initials];
+    const rows = [
+      ['Date', fmtDateTime(rec.created_at)],
+      ['Mixer', name ? `${rec.initials} (${name})` : rec.initials],
+      ['Customer', rec.customer_name],
+      ['Account no.', rec.account_number],
+      ['Colour', String(rec.colour || '').replace(/\s*\n\s*/g, ' / ')],
+      ['Shade / variant', [rec.variant, rec.shade].filter(Boolean).join(' ')],
+      ['Paint system', rec.paint_system],
+      ['Amount', rec.amount],
+      ['Number of mixes', rec.number_of_mixes]
+    ].filter(([, v]) => v !== null && v !== undefined && String(v).trim() !== '');
+    $('rowDelDetails').innerHTML = '<dl class="detail-list">' + rows.map(([k, v]) => `<dt>${escapeHtml(k)}</dt><dd>${escapeHtml(v)}</dd>`).join('') + '</dl>';
+    $('rowDelGo').disabled = false;
+    $('rowDelModal').classList.add('open');
+    $('rowDelCancel').focus(); // focus Cancel, so pressing Enter never deletes by accident
+  }
+  function closeRowDelete() { if (!rowDel.busy) $('rowDelModal').classList.remove('open'); }
+  $('rowDelClose').addEventListener('click', closeRowDelete);
+  $('rowDelCancel').addEventListener('click', closeRowDelete);
+
+  $('rowDelGo').addEventListener('click', async () => {
+    const r = rowDel.rec;
+    if (!r || rowDel.busy) return;
+    const st = $('rowDelStatus');
+    rowDel.busy = true;
+    $('rowDelGo').disabled = true;
+    setStatus(st, 'Deleting…', false);
+    let done = false;
+    try {
+      const { count: found, error: e1 } = await rowFilter(supabaseClient.from('paint_mixes').select('*', { count: 'exact', head: true }), r);
+      if (e1) throw e1;
+      if (found !== 1) {
+        throw new Error(found === 0
+          ? 'This record no longer exists. Close this box and search again.'
+          : `${found} records match this row, so nothing was deleted. Ask IT to remove it in Supabase.`);
+      }
+      const { count, error } = await rowFilter(supabaseClient.from('paint_mixes').delete({ count: 'exact' }), r);
+      if (error) throw error;
+      if (count !== 1) throw new Error('The database refused the delete and nothing was removed. A delete permission is probably missing. See the setup SQL.');
+      done = true;
+    } catch (err) {
+      if (!handleArchiveError(err)) setStatus(st, err.message, true);
+      $('rowDelGo').disabled = false;
+    } finally {
+      rowDel.busy = false;
+    }
+    if (done) {
+      rowDel.rec = null;
+      $('rowDelModal').classList.remove('open');
+      toast('Record deleted. A mixer can log it again.');
+      if (archiveRows.length === 1 && archivePage > 0) archivePage--; // that was the last row on its page
+      runSearch(false);
+      loadSummary(true);
+    }
   });
 
   $('filterForm').addEventListener('submit', (e) => { e.preventDefault(); runSearch(true); });
