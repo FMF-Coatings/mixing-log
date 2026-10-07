@@ -230,12 +230,13 @@
   #printLabel {
     position: fixed;
     top: 0; left: -9999px;
-    width: 89mm; height: 36mm;
+    width: 88mm; height: 36mm;
     padding: 2mm 3mm;
     box-sizing: border-box;
     overflow: visible;
     font-family: 'Barlow', sans-serif;
     color: #000;
+    overflow-wrap: anywhere;
     visibility: hidden;
     pointer-events: none;
     z-index: -1;
@@ -247,11 +248,12 @@
   }
   #printLabel .pl-colour { font-weight: 700; text-transform: uppercase; margin-bottom: 0.8mm; }
   #printLabel .pl-line { text-transform: uppercase; margin-bottom: 0.3mm; }
+  #printLabel #plInner { display: flow-root; }
   #printLabel .pl-date {
-    font-size: 7.5pt !important; color: #333; margin-top: 1mm;
+    font-size: 9pt !important; color: #000; margin-top: 1mm;
   }
 
-  @page { size: 89mm 36mm; margin: 0; }
+  @page { size: 88mm 36mm; margin: 0; }
   @media print {
     /* Remove EVERYTHING except the label from layout. Hiding with visibility
        is not enough: the hidden page would still occupy space and paginate,
@@ -263,7 +265,7 @@
       visibility: visible;
       position: static;
       left: auto; top: auto;
-      width: 89mm; height: 35mm;
+      width: 88mm; height: 35mm;
       overflow: hidden; /* final safety net only; the shrink loop should already fit */
       break-inside: avoid;
       page-break-after: avoid;
@@ -532,12 +534,14 @@
 
 <!-- Label: laid out off-screen, shown alone when printing -->
 <div id="printLabel">
-  <div class="pl-customer" id="plCustomer"></div>
-  <div class="pl-colour" id="plColour"></div>
-  <div class="pl-line" id="plShadeVariant"></div>
-  <div class="pl-line" id="plSystem"></div>
-  <div class="pl-line" id="plAmount"></div>
-  <div class="pl-line pl-date" id="plDate"></div>
+  <div id="plInner">
+    <div class="pl-customer" id="plCustomer"></div>
+    <div class="pl-colour" id="plColour"></div>
+    <div class="pl-line" id="plShadeVariant"></div>
+    <div class="pl-line" id="plSystem"></div>
+    <div class="pl-line" id="plAmount"></div>
+    <div class="pl-line pl-date" id="plDate"></div>
+  </div>
 </div>
 
 <script>
@@ -805,10 +809,14 @@
   });
 
   // ───────── Label printing ─────────
-  // window.print() against a page sized 89mm x 36mm. See @media print CSS:
+  // window.print() against a page sized 88mm x 36mm. See @media print CSS:
   // only #printLabel exists in print layout, so exactly one label is printed.
-  const PRINT_LABEL_HEIGHT_MM = 36;
-  const PRINT_LABEL_PADDING_MM = 4;
+  // The CSS above uses the same label size and padding (88 x 36mm, 3mm / 2mm).
+  const LABEL_PAD_X_MM = 3;
+  const LABEL_PAD_Y_MM = 2;
+  const LABEL_SAFE_HEIGHT_MM = 31;  // usable text height; leaves room for the printer's unprintable edge
+  const LABEL_SHIFT_X_MM = 0;       // nudge all text right (+) or left (-) if the printer offsets it
+  const LABEL_SHIFT_Y_MM = 0;       // nudge all text down (+) or up (-)
   const MM_TO_PX = 96 / 25.4;
 
   function printMixLabel(record) {
@@ -828,12 +836,19 @@
     window.print();
   }
 
-  // Shrinks the label text proportionally until it fits the physical height.
+  // Starts at a large size and shrinks the text proportionally until the
+  // CONTENT fits the label. It measures #plInner (the text block), not the
+  // label box: the box is a fixed 36mm tall, so measuring it always reads
+  // "too big" and shrinks the text to the minimum every time.
   function fitPrintLabel() {
     const label = $('printLabel');
-    const maxHeightPx = (PRINT_LABEL_HEIGHT_MM - PRINT_LABEL_PADDING_MM) * MM_TO_PX;
-    const sizes = { customer: 15, colour: 12, line: 9.5 }; // pt, starting sizes
-    const minScale = 0.55;
+    const inner = $('plInner');
+    label.style.paddingLeft = Math.max(0, LABEL_PAD_X_MM + LABEL_SHIFT_X_MM) + 'mm';
+    label.style.paddingTop = Math.max(0, LABEL_PAD_Y_MM + LABEL_SHIFT_Y_MM) + 'mm';
+    const maxHeightPx = (LABEL_SAFE_HEIGHT_MM - Math.max(0, LABEL_SHIFT_Y_MM)) * MM_TO_PX;
+
+    const sizes = { customer: 20, colour: 16, line: 12 }; // pt, starting sizes (date is fixed in CSS)
+    const minScale = 0.45;
     let scale = 1;
 
     const customerEl = $('plCustomer');
@@ -851,7 +866,7 @@
       });
     }
     applyScale(scale);
-    while (label.scrollHeight > maxHeightPx && scale > minScale) {
+    while (inner.offsetHeight > maxHeightPx && scale > minScale) {
       scale -= 0.03;
       applyScale(scale);
     }
