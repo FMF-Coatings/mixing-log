@@ -69,6 +69,7 @@
     font-family: 'Barlow', sans-serif; font-size: 1rem; font-weight: 500; line-height: 1.35; color: var(--text);
     background: var(--off-white); transition: border-color 0.2s, box-shadow 0.2s; resize: none; outline: none; display: block;
   }
+  input::placeholder, textarea::placeholder { text-transform: none; }
   input:focus, textarea:focus { border-color: var(--brand); background: white; box-shadow: 0 0 0 3px rgba(0,75,142,0.1); }
   input[disabled] { color: var(--text-muted); background: var(--border); }
 
@@ -168,7 +169,7 @@
   .initials-confirm strong { color: var(--text); }
 
   /* ── MANAGER ARCHIVE ── */
-  .filter-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 14px 16px; align-items: end; }
+  .filter-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 14px 16px; align-items: start; }
   .filter-grid .field { margin-bottom: 0; }
   .filter-grid .search-field { grid-column: span 2; }
   @media (max-width: 560px) { .filter-grid .search-field { grid-column: span 1; } }
@@ -206,6 +207,49 @@
   .add-mixer-grid .field { margin-bottom: 0; }
   @media (max-width: 640px) { .add-mixer-grid { grid-template-columns: 1fr; } }
   table.archive td input[type="text"] { padding: 8px 12px; font-size: 0.95rem; }
+
+  /* ── MIXES PER MIXER ── */
+  .summary-card { padding: 20px 22px; }
+  .summary-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
+  .summary-head .card-label { margin: 0; }
+  .summary-meta { font-size: 0.85rem; color: var(--text-muted); }
+  .summary-list { display: grid; gap: 12px; }
+  .summary-row { display: grid; grid-template-columns: 42px minmax(120px, 200px) 1fr auto; align-items: center; gap: 14px; }
+  .summary-avatar {
+    width: 40px; height: 40px; border-radius: 50%; background: var(--brand); color: #fff;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Barlow Condensed', sans-serif; font-weight: 800; font-size: 1.05rem;
+  }
+  .summary-name { line-height: 1.2; min-width: 0; }
+  .summary-name strong { display: block; font-weight: 600; font-size: 0.95rem; overflow-wrap: anywhere; }
+  .summary-name span { display: block; font-size: 0.78rem; color: var(--text-muted); }
+  .summary-bar { height: 14px; background: #e9f0f9; border-radius: 999px; overflow: hidden; }
+  .summary-fill { height: 100%; min-width: 6px; border-radius: 999px; background: var(--brand); transition: width 0.4s ease; }
+  .summary-row.lead .summary-fill { background: var(--accent); }
+  .summary-count { font-family: 'Barlow Condensed', sans-serif; font-weight: 800; font-size: 1.6rem; color: var(--brand); min-width: 3.4ch; text-align: right; line-height: 1; }
+  .summary-note { margin-top: 14px; font-size: 0.78rem; color: var(--text-muted); }
+  @media (max-width: 640px) { .summary-row { grid-template-columns: 42px 1fr auto; } .summary-bar { grid-column: 1 / -1; } }
+  @media (prefers-reduced-motion: reduce) { .summary-fill { transition: none; } }
+
+  /* ── EXPORT / DELETE DIALOGS ── */
+  .period-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 14px; }
+  .period-row .field { margin-bottom: 0; }
+  .period-info { margin: 14px 0 2px; font-size: 0.92rem; color: var(--text-muted); min-height: 1.4em; }
+  .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 18px; flex-wrap: wrap; }
+  .modal-actions .submit { width: auto; padding: 12px 26px; }
+  .modal.danger { border-top: 6px solid var(--error); }
+  .modal.danger .modal-title { color: var(--error); }
+  .step-label { font-size: 0.8rem; font-weight: 700; color: var(--text-muted); letter-spacing: 0.06em; text-transform: uppercase; margin: 6px 0 12px; }
+  .warn-box, .ok-box, .info-box { padding: 12px 14px; border-radius: 10px; font-size: 0.92rem; line-height: 1.45; margin: 12px 0; }
+  .warn-box { background: #fdecec; border: 1.5px solid #f3b9b9; color: #7d1f1f; }
+  .ok-box { background: #e8f8f0; border: 1.5px solid #a9e3c8; color: #0b5d3a; }
+  .info-box { background: var(--off-white); border: 1.5px solid var(--border); color: var(--text); }
+  .check-row { display: flex; gap: 10px; align-items: flex-start; margin: 16px 0 4px; font-size: 0.92rem; line-height: 1.4; cursor: pointer; }
+  .check-row input { margin-top: 3px; width: 18px; height: 18px; flex-shrink: 0; }
+  button.secondary.danger { background: #fff; color: var(--error); border-color: #f0b4b4; }
+  button.secondary.danger:hover { border-color: var(--error); }
+  button.submit.danger-fill { background: var(--error); }
+  button.submit.danger-fill:hover { background: #b92f2f; }
 
   /* ── REPRINT MODAL ── */
   .modal-backdrop { position: fixed; inset: 0; background: rgba(13,27,42,0.55); display: none; align-items: center; justify-content: center; z-index: 800; padding: 20px; }
@@ -479,10 +523,20 @@
           <button type="submit" class="submit" style="width:auto;padding:12px 28px;" id="searchBtn">Search</button>
           <button type="button" class="secondary" id="clearBtn">Clear filters</button>
           <span class="spacer"></span>
-          <button type="button" class="secondary" id="exportBtn">Export results to CSV</button>
+          <button type="button" class="secondary" id="exportBtn">Export to CSV</button>
+          <button type="button" class="secondary danger" id="deleteBtn">Delete Records</button>
         </div>
         <div id="archiveStatus" class="status" role="status"></div>
       </form>
+    </div>
+
+    <div class="card summary-card" id="summaryCard">
+      <div class="summary-head">
+        <div class="card-label">Number of mixes per mixer</div>
+        <div class="summary-meta" id="summaryMeta"></div>
+      </div>
+      <div class="summary-list" id="summaryBody"></div>
+      <div class="summary-note">Mixes are the total of the Number of Mixes field. Works orders are the number of records logged. The date filters above change the period.</div>
     </div>
 
     <div class="results-bar">
@@ -543,6 +597,80 @@
   </div>
 </div>
 
+<!-- ═══════════ EXPORT DIALOG ═══════════ -->
+<div class="modal-backdrop" id="exportModal">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="exTitle">
+    <div class="modal-head">
+      <div class="modal-title" id="exTitle">Export to CSV</div>
+      <button type="button" class="modal-close" id="exClose" aria-label="Close">&times;</button>
+    </div>
+    <div class="field-hint">Choose the month and year to export. The file is named "Works Order History" followed by the month and year.</div>
+    <div class="period-row">
+      <div class="field"><label class="field-label" for="exMonth">Month</label><select id="exMonth"></select></div>
+      <div class="field"><label class="field-label" for="exYear">Year</label><select id="exYear"></select></div>
+    </div>
+    <div class="period-info" id="exInfo"></div>
+    <div class="modal-actions">
+      <button type="button" class="secondary" id="exCancel">Close</button>
+      <button type="button" class="submit" id="exGo" disabled>Download CSV</button>
+    </div>
+    <div id="exStatus" class="status" role="status"></div>
+  </div>
+</div>
+
+<!-- ═══════════ DELETE DIALOG (3 steps) ═══════════ -->
+<div class="modal-backdrop" id="deleteModal">
+  <div class="modal danger" role="dialog" aria-modal="true" aria-labelledby="delTitle">
+    <div class="modal-head">
+      <div class="modal-title" id="delTitle">Delete records</div>
+      <button type="button" class="modal-close" id="delClose" aria-label="Close">&times;</button>
+    </div>
+    <div class="step-label" id="delStepLabel"></div>
+
+    <div id="delStep1">
+      <div class="warn-box"><strong>This permanently deletes records from the database and cannot be undone.</strong> Only completed months can be deleted, and the month must be exported to CSV first.</div>
+      <div class="period-row">
+        <div class="field"><label class="field-label" for="delMonth">Month</label><select id="delMonth"></select></div>
+        <div class="field"><label class="field-label" for="delYear">Year</label><select id="delYear"></select></div>
+      </div>
+      <div class="period-info" id="delInfo1"></div>
+      <div class="modal-actions">
+        <button type="button" class="secondary" id="delCancel1">Cancel</button>
+        <button type="button" class="submit" id="delNext1" disabled>Continue</button>
+      </div>
+    </div>
+
+    <div id="delStep2" style="display:none;">
+      <div id="delExportState" class="info-box"></div>
+      <div class="modal-actions" style="justify-content:flex-start;margin-top:0;">
+        <button type="button" class="secondary" id="delExportNow" style="display:none;"></button>
+      </div>
+      <label class="check-row"><input type="checkbox" id="delChecked" disabled /><span>I have opened the downloaded CSV file and confirmed it contains the records for <strong id="delPeriod2"></strong>.</span></label>
+      <div class="modal-actions">
+        <button type="button" class="secondary" id="delBack2">Back</button>
+        <button type="button" class="submit" id="delNext2" disabled>Continue</button>
+      </div>
+      <div id="delStatus2" class="status" role="status"></div>
+    </div>
+
+    <form id="delStep3" style="display:none;" autocomplete="off">
+      <div class="warn-box">You are about to permanently delete <strong id="delCount3"></strong> from <strong id="delPeriod3"></strong>. This cannot be undone. The records will only exist in the CSV file you exported.</div>
+      <label class="field-label" for="delConfirmInput">Type <strong>delete</strong> to confirm</label>
+      <input type="text" id="delConfirmInput" autocomplete="off" spellcheck="false" />
+      <div class="modal-actions">
+        <button type="button" class="secondary" id="delBack3">Back</button>
+        <button type="submit" class="submit danger-fill" id="delGo" disabled>Delete records</button>
+      </div>
+      <div id="delStatus3" class="status" role="status"></div>
+    </form>
+
+    <div id="delDone" style="display:none;">
+      <div class="ok-box" id="delDoneText"></div>
+      <div class="modal-actions"><button type="button" class="submit" id="delFinish">Close</button></div>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <!-- Label: laid out off-screen, shown alone when printing -->
@@ -575,7 +703,7 @@
     { name: "Ryan P",     initials: "RP" }
   ];
 
-  const BUILD_ID = 'build 2026-10-07 e';     // shown bottom of the initials screen: confirms which version a PC is running
+  const BUILD_ID = 'build 2026-10-07 f';     // shown bottom of the initials screen: confirms which version a PC is running
   const REQUIRE_ACCOUNT_NUMBER = false;      // set true to make Account Number mandatory
   const LOGO_URL = "";                       // e.g. "logo.png" once the company logo is supplied
   const REPRINT_STORAGE_KEY = 'paintmix.recentLabels.v1';
@@ -969,7 +1097,7 @@
   $('entryReprintBtn').addEventListener('click', openReprint);
   $('reprintClose').addEventListener('click', closeReprint);
   $('reprintModal').addEventListener('click', (e) => { if (e.target === $('reprintModal')) closeReprint(); });
-  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeReprint(); });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { closeReprint(); closeExport(); closeDelete(); } });
   $('reprintList').addEventListener('click', (e) => {
     const btn = e.target.closest('button[data-i]');
     if (!btn) return;
@@ -999,6 +1127,12 @@
     archiveRows = [];
     $('archiveBody').innerHTML = ''; // don't leave customer data in the DOM
     $('mixersBody').innerHTML = '';
+    $('summaryBody').innerHTML = '';
+    summaryKey = null;
+    Object.keys(exportsDone).forEach(k => delete exportsDone[k]);
+    del.busy = false;
+    $('exportModal').classList.remove('open');
+    $('deleteModal').classList.remove('open');
     editingInitials = null;
     $('resultsInfo').innerHTML = '&nbsp;';
     if (location.hash === '#manager') history.replaceState(null, '', location.pathname + location.search);
@@ -1212,6 +1346,9 @@
     }
     const ini = $('fMixer').value.trim().toUpperCase();
     if (ini) q = q.eq('initials', ini);
+    return applyDates(q);
+  }
+  function applyDates(q) {
     const from = $('fFrom').value;
     if (from) q = q.gte('created_at', new Date(from + 'T00:00:00').toISOString());
     const to = $('fTo').value;
@@ -1253,6 +1390,7 @@
     archiveRows = data || [];
     archiveTotal = count || 0;
     renderRows();
+    if (resetPage) loadSummary(false);
   }
 
   function renderRows() {
@@ -1289,8 +1427,7 @@
   $('prevBtn').addEventListener('click', () => { if (archivePage > 0) { archivePage--; runSearch(false); } });
   $('nextBtn').addEventListener('click', () => { archivePage++; runSearch(false); });
 
-  // ───────── Manager: CSV export (all rows matching current filters) ─────────
-  const CSV_MAX_ROWS = 50000;
+  // ───────── Manager: month export, delete records, mixes per mixer ─────────
 
   function toCsvValue(v) {
     if (v === null || v === undefined) return '';
@@ -1301,48 +1438,352 @@
     return s;
   }
 
-  async function fetchAllMatching() {
-    const rows = [];
-    const batch = 1000; // Supabase's default max rows per request
-    let from = 0;
-    for (;;) {
-      const { data, error } = await applySort(buildQuery()).range(from, from + batch - 1);
-      if (error) throw error;
-      rows.push(...data);
-      if (data.length < batch || rows.length >= CSV_MAX_ROWS) break;
-      from += batch;
+  const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+  const ALLOW_DELETE_CURRENT_MONTH = false; // true = also allow deleting the month still in progress
+  const EXPORT_BATCH = 1000;                // Supabase's default max rows per request
+  const EXPORT_MAX_ROWS = 50000;
+  // 'YYYY-MM' -> { count, maxCreatedAt, at, filename }. Remembered for this sign-in only:
+  // the delete flow refuses to run unless this month was exported in the same session.
+  const exportsDone = {};
+  const del = { y: 0, m: 0, count: 0, busy: false };
+  let summaryKey = null;
+
+  const periodKey = (y, m) => `${y}-${String(m + 1).padStart(2, '0')}`;
+  const periodLabel = (y, m) => `${MONTH_NAMES[m]} ${y}`;
+  const periodBounds = (y, m) => ({ start: new Date(y, m, 1).toISOString(), end: new Date(y, m + 1, 1).toISOString() });
+  const isCompletedMonth = (y, m) => new Date(y, m + 1, 1) <= new Date();
+  function previousMonth() {
+    const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - 1);
+    return { y: d.getFullYear(), m: d.getMonth() };
+  }
+  function fillPeriodSelects(monthSel, yearSel) {
+    if (!monthSel.options.length) {
+      MONTH_NAMES.forEach((n, i) => { const o = document.createElement('option'); o.value = String(i); o.textContent = n; monthSel.appendChild(o); });
     }
-    return rows;
+    if (!yearSel.options.length) {
+      const now = new Date().getFullYear();
+      for (let y = now; y >= now - 6; y--) { const o = document.createElement('option'); o.value = String(y); o.textContent = String(y); yearSel.appendChild(o); }
+    }
+    const p = previousMonth(); // default to last month: the one you export and clear next
+    monthSel.value = String(p.m); yearSel.value = String(p.y);
   }
 
-  $('exportBtn').addEventListener('click', async () => {
-    const status = $('archiveStatus');
-    const btn = $('exportBtn');
-    btn.disabled = true;
-    setStatus(status, 'Building CSV…', false);
+  async function countPeriod(y, m, upTo) {
+    const b = periodBounds(y, m);
+    let q = supabaseClient.from('paint_mixes').select('*', { count: 'exact', head: true })
+      .gte('created_at', b.start).lt('created_at', b.end);
+    if (upTo) q = q.lte('created_at', upTo);
+    const { count, error } = await q;
+    if (error) throw error;
+    return count || 0;
+  }
+
+  async function fetchPeriodRows(y, m) {
+    const b = periodBounds(y, m);
+    const rows = [];
+    let total = null;
+    for (let from = 0; ; from += EXPORT_BATCH) {
+      const { data, count, error } = await supabaseClient.from('paint_mixes').select('*', { count: 'exact' })
+        .gte('created_at', b.start).lt('created_at', b.end)
+        .order('created_at', { ascending: true })
+        .range(from, from + EXPORT_BATCH - 1);
+      if (error) throw error;
+      if (total === null) total = count || 0;
+      rows.push(...data);
+      if (data.length < EXPORT_BATCH || rows.length >= EXPORT_MAX_ROWS) break;
+    }
+    return { rows, total };
+  }
+
+  function buildCsv(rows) {
+    const header = COLUMNS.map(c => toCsvValue(c.label)).join(',');
+    const lines = rows.map(r => COLUMNS.map(c =>
+      toCsvValue(c.key === 'created_at' ? fmtIsoLocal(r.created_at) : r[c.key])
+    ).join(','));
+    return '\uFEFF' + [header, ...lines].join('\r\n'); // BOM so Excel reads UTF-8
+  }
+  function downloadCsv(csv, filename) {
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = filename;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
+  // Exports one whole month. Only counts as "exported" (for the delete check) if
+  // every record in the month was read.
+  async function exportPeriod(y, m) {
+    const { rows, total } = await fetchPeriodRows(y, m);
+    if (!rows.length) throw new Error('There are no records for ' + periodLabel(y, m) + '.');
+    if (rows.length !== total) throw new Error(`Only ${rows.length.toLocaleString()} of ${total.toLocaleString()} records could be read, so nothing was exported. Try again.`);
+    const filename = `Works Order History ${periodLabel(y, m)}.csv`;
+    downloadCsv(buildCsv(rows), filename);
+    const info = { count: rows.length, maxCreatedAt: rows[rows.length - 1].created_at, at: new Date(), filename };
+    exportsDone[periodKey(y, m)] = info;
+    return info;
+  }
+
+  // ── Export dialog ──
+  let exportToken = 0;
+  async function refreshExportInfo() {
+    const y = +$('exYear').value, m = +$('exMonth').value, tok = ++exportToken;
+    $('exGo').disabled = true;
+    $('exStatus').textContent = '';
+    $('exInfo').textContent = 'Checking…';
     try {
-      const rows = await fetchAllMatching();
-      if (!rows.length) { setStatus(status, 'Nothing to export. No mixes match these filters.', true); return; }
-      const header = COLUMNS.map(c => toCsvValue(c.label)).join(',');
-      const lines = rows.map(r => COLUMNS.map(c =>
-        toCsvValue(c.key === 'created_at' ? fmtIsoLocal(r.created_at) : r[c.key])
-      ).join(','));
-      const csv = '\uFEFF' + [header, ...lines].join('\r\n'); // BOM so Excel reads UTF-8
-      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      const today = fmtIsoLocal(new Date().toISOString()).slice(0, 10);
-      a.href = url; a.download = `paint_mixes_${today}.csv`;
-      document.body.appendChild(a); a.click(); a.remove();
-      setTimeout(() => URL.revokeObjectURL(url), 1000);
-      setStatus(status, `Downloaded ${rows.length.toLocaleString()} mixes.` +
-        (rows.length >= CSV_MAX_ROWS ? ' Export stopped at the 50,000 row limit. Narrow the dates for the rest.' : ''), false);
+      const n = await countPeriod(y, m);
+      if (tok !== exportToken) return;
+      $('exInfo').textContent = n
+        ? `${n.toLocaleString()} works ${n === 1 ? 'order' : 'orders'} found in ${periodLabel(y, m)}.`
+        : `No records found for ${periodLabel(y, m)}.`;
+      $('exGo').disabled = !n;
     } catch (err) {
-      if (!handleArchiveError(err)) setStatus(status, 'Export failed: ' + err.message, true);
+      if (tok !== exportToken) return;
+      if (!handleArchiveError(err)) $('exInfo').textContent = 'Could not check this month: ' + err.message;
+    }
+  }
+  function openExport() {
+    fillPeriodSelects($('exMonth'), $('exYear'));
+    $('exportModal').classList.add('open');
+    refreshExportInfo();
+  }
+  function closeExport() { $('exportModal').classList.remove('open'); }
+  $('exportBtn').addEventListener('click', openExport);
+  $('exClose').addEventListener('click', closeExport);
+  $('exCancel').addEventListener('click', closeExport);
+  $('exportModal').addEventListener('click', (e) => { if (e.target === $('exportModal')) closeExport(); });
+  $('exMonth').addEventListener('change', refreshExportInfo);
+  $('exYear').addEventListener('change', refreshExportInfo);
+  $('exGo').addEventListener('click', async () => {
+    const y = +$('exYear').value, m = +$('exMonth').value;
+    $('exGo').disabled = true;
+    setStatus($('exStatus'), 'Building CSV…', false);
+    try {
+      const info = await exportPeriod(y, m);
+      setStatus($('exStatus'), `Downloaded ${info.count.toLocaleString()} records as "${info.filename}".`, false);
+    } catch (err) {
+      if (!handleArchiveError(err)) setStatus($('exStatus'), 'Export failed: ' + err.message, true);
     } finally {
-      btn.disabled = false;
+      $('exGo').disabled = false;
     }
   });
+
+  // ── Delete dialog: choose month > export check > type "delete" ──
+  const DEL_STEPS = ['delStep1', 'delStep2', 'delStep3', 'delDone'];
+  const DEL_LABELS = ['Step 1 of 3: choose the month', 'Step 2 of 3: check the export', 'Step 3 of 3: final confirmation', ''];
+  function showDelStep(n) {
+    DEL_STEPS.forEach((id, i) => { $(id).style.display = i === n - 1 ? '' : 'none'; });
+    $('delStepLabel').textContent = DEL_LABELS[n - 1];
+  }
+
+  let delToken = 0;
+  async function refreshDelStep1() {
+    const y = +$('delYear').value, m = +$('delMonth').value, tok = ++delToken;
+    $('delNext1').disabled = true;
+    if (!ALLOW_DELETE_CURRENT_MONTH && !isCompletedMonth(y, m)) {
+      $('delInfo1').textContent = `${periodLabel(y, m)} has not finished yet. Only completed months can be deleted.`;
+      return;
+    }
+    $('delInfo1').textContent = 'Checking…';
+    try {
+      const n = await countPeriod(y, m);
+      if (tok !== delToken) return;
+      del.count = n;
+      $('delInfo1').textContent = n
+        ? `${n.toLocaleString()} ${n === 1 ? 'record' : 'records'} found in ${periodLabel(y, m)}.`
+        : `No records found for ${periodLabel(y, m)}. Nothing to delete.`;
+      $('delNext1').disabled = !n;
+    } catch (err) {
+      if (tok !== delToken) return;
+      if (!handleArchiveError(err)) $('delInfo1').textContent = 'Could not check this month: ' + err.message;
+    }
+  }
+
+  async function refreshDelStep2() {
+    const box = $('delExportState');
+    const exportBtn = $('delExportNow');
+    const label = periodLabel(del.y, del.m);
+    $('delChecked').checked = false; $('delChecked').disabled = true;
+    $('delNext2').disabled = true;
+    exportBtn.style.display = 'none';
+    $('delStatus2').textContent = '';
+    box.className = 'info-box'; box.textContent = 'Checking export…';
+    let now;
+    try { now = await countPeriod(del.y, del.m); }
+    catch (err) { if (!handleArchiveError(err)) { box.className = 'warn-box'; box.textContent = 'Could not check the month: ' + err.message; } return; }
+    del.count = now;
+    const info = exportsDone[periodKey(del.y, del.m)];
+    exportBtn.textContent = `Export ${label} now`;
+    if (!info) {
+      box.className = 'warn-box';
+      box.innerHTML = `<strong>${escapeHtml(label)} has not been exported in this session.</strong> Export it to CSV before it can be deleted.`;
+      exportBtn.style.display = '';
+    } else if (info.count !== now) {
+      box.className = 'warn-box';
+      box.innerHTML = `<strong>Your export is out of date.</strong> It holds ${info.count.toLocaleString()} records but the database now holds ${now.toLocaleString()} for ${escapeHtml(label)}. Export again.`;
+      exportBtn.style.display = '';
+    } else {
+      const t = info.at.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+      box.className = 'ok-box';
+      box.innerHTML = `<strong>Exported:</strong> ${info.count.toLocaleString()} records at ${t} as "${escapeHtml(info.filename)}".`;
+      $('delChecked').disabled = false;
+    }
+  }
+
+  function openDelete() {
+    fillPeriodSelects($('delMonth'), $('delYear'));
+    $('delStatus2').textContent = ''; $('delStatus3').textContent = '';
+    showDelStep(1);
+    $('deleteModal').classList.add('open');
+    refreshDelStep1();
+  }
+  function closeDelete() { if (!del.busy) $('deleteModal').classList.remove('open'); }
+
+  $('deleteBtn').addEventListener('click', openDelete);
+  $('delClose').addEventListener('click', closeDelete);
+  $('delCancel1').addEventListener('click', closeDelete);
+  $('delFinish').addEventListener('click', closeDelete);
+  $('delMonth').addEventListener('change', refreshDelStep1);
+  $('delYear').addEventListener('change', refreshDelStep1);
+
+  $('delNext1').addEventListener('click', () => {
+    del.y = +$('delYear').value; del.m = +$('delMonth').value;
+    $('delPeriod2').textContent = periodLabel(del.y, del.m);
+    showDelStep(2);
+    refreshDelStep2();
+  });
+  $('delBack2').addEventListener('click', () => { showDelStep(1); refreshDelStep1(); });
+
+  $('delExportNow').addEventListener('click', async () => {
+    const btn = $('delExportNow');
+    btn.disabled = true;
+    setStatus($('delStatus2'), 'Building CSV…', false);
+    try { await exportPeriod(del.y, del.m); await refreshDelStep2(); }
+    catch (err) { if (!handleArchiveError(err)) setStatus($('delStatus2'), 'Export failed: ' + err.message, true); }
+    finally { btn.disabled = false; }
+  });
+  $('delChecked').addEventListener('change', () => { $('delNext2').disabled = !$('delChecked').checked; });
+
+  $('delNext2').addEventListener('click', () => {
+    $('delCount3').textContent = `${del.count.toLocaleString()} ${del.count === 1 ? 'record' : 'records'}`;
+    $('delPeriod3').textContent = periodLabel(del.y, del.m);
+    $('delConfirmInput').value = '';
+    $('delGo').disabled = true;
+    $('delStatus3').textContent = '';
+    showDelStep(3);
+    $('delConfirmInput').focus();
+  });
+  $('delBack3').addEventListener('click', () => { if (!del.busy) { showDelStep(2); refreshDelStep2(); } });
+  const delConfirmed = () => $('delConfirmInput').value.trim().toLowerCase() === 'delete';
+  $('delConfirmInput').addEventListener('input', () => { $('delGo').disabled = !delConfirmed(); });
+
+  $('delStep3').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const st = $('delStatus3');
+    if (del.busy) return;
+    if (!delConfirmed()) { setStatus(st, 'Type the word delete to confirm.', true); return; }
+    const key = periodKey(del.y, del.m);
+    const info = exportsDone[key];
+    if (!info) { setStatus(st, 'No export found for this month. Go back and export it first.', true); return; }
+    del.busy = true;
+    $('delGo').disabled = true;
+    try {
+      setStatus(st, 'Checking the export still matches the database…', false);
+      // Only rows up to the last exported record can be deleted, so anything logged since can never be removed.
+      const stillThere = await countPeriod(del.y, del.m, info.maxCreatedAt);
+      if (stillThere !== info.count) {
+        throw new Error(`The database holds ${stillThere.toLocaleString()} records for this month but your export has ${info.count.toLocaleString()}. Nothing was deleted. Go back and export again.`);
+      }
+      setStatus(st, 'Deleting…', false);
+      const b = periodBounds(del.y, del.m);
+      const { count, error } = await supabaseClient.from('paint_mixes').delete({ count: 'exact' })
+        .gte('created_at', b.start).lt('created_at', b.end).lte('created_at', info.maxCreatedAt);
+      if (error) throw error;
+      if (!count) throw new Error('The database refused the delete and nothing was removed. A delete permission is probably missing. See the setup SQL.');
+      delete exportsDone[key];
+      $('delDoneText').innerHTML = `<strong>Deleted ${count.toLocaleString()} ${count === 1 ? 'record' : 'records'}</strong> from ${escapeHtml(periodLabel(del.y, del.m))}.` +
+        (count !== info.count ? ` Note: your export had ${info.count.toLocaleString()} records, so check the archive.` : '');
+      showDelStep(4);
+      runSearch(true);
+      loadSummary(true);
+    } catch (err) {
+      if (!handleArchiveError(err)) setStatus(st, err.message, true);
+      $('delGo').disabled = !delConfirmed();
+    } finally {
+      del.busy = false;
+    }
+  });
+
+  // ── Number of mixes per mixer (follows the From / To dates; ignores search and initials) ──
+  let summaryToken = 0;
+  const fmtYmd = (v) => v.split('-').reverse().join('/');
+  function summaryRangeLabel() {
+    const from = $('fFrom').value, to = $('fTo').value;
+    if (from && to) return `${fmtYmd(from)} to ${fmtYmd(to)}`;
+    if (from) return `From ${fmtYmd(from)}`;
+    if (to) return `Up to ${fmtYmd(to)}`;
+    return 'All time';
+  }
+
+  async function loadSummary(force) {
+    const key = $('fFrom').value + '|' + $('fTo').value;
+    if (!force && key === summaryKey) return;
+    summaryKey = key;
+    const tok = ++summaryToken;
+    const body = $('summaryBody');
+    $('summaryMeta').textContent = summaryRangeLabel();
+    body.innerHTML = '<div class="empty">Calculating…</div>';
+    const stats = {};
+    let read = 0, total = null;
+    try {
+      for (let from = 0; ; from += 1000) {
+        const { data, count, error } = await applyDates(
+          supabaseClient.from('paint_mixes').select('initials,number_of_mixes', { count: 'exact' })
+        ).order('created_at', { ascending: true }).range(from, from + 999);
+        if (tok !== summaryToken) return;
+        if (error) throw error;
+        if (total === null) total = count || 0;
+        (data || []).forEach(r => {
+          const k = String(r.initials || '').trim() || '?';
+          const s = stats[k] || (stats[k] = { mixes: 0, orders: 0 });
+          s.orders += 1;
+          s.mixes += Number(r.number_of_mixes) || 0;
+        });
+        read += (data || []).length;
+        if (!data || data.length < 1000 || read >= 100000) break;
+      }
+    } catch (err) {
+      if (tok !== summaryToken) return;
+      summaryKey = null;
+      if (!handleArchiveError(err)) body.innerHTML = `<div class="empty">Could not load the summary: ${escapeHtml(err.message)}</div>`;
+      return;
+    }
+    if (tok !== summaryToken) return;
+    renderSummary(stats, read !== total);
+  }
+
+  function renderSummary(stats, incomplete) {
+    const list = Object.keys(stats).map(k => ({ ini: k, mixes: stats[k].mixes, orders: stats[k].orders }))
+      .sort((a, b) => b.mixes - a.mixes || b.orders - a.orders || a.ini.localeCompare(b.ini));
+    const body = $('summaryBody');
+    const totalMixes = list.reduce((n, r) => n + r.mixes, 0);
+    const totalOrders = list.reduce((n, r) => n + r.orders, 0);
+    $('summaryMeta').textContent = `${summaryRangeLabel()} · ${totalMixes.toLocaleString()} mixes · ${totalOrders.toLocaleString()} works orders` +
+      (incomplete ? ' · figures may be incomplete' : '');
+    if (!list.length) { body.innerHTML = '<div class="empty">No mixes logged in this period.</div>'; return; }
+    const max = Math.max(1, list[0].mixes);
+    body.innerHTML = list.map((r, i) => {
+      const name = KNOWN_NAMES[r.ini];
+      const pct = Math.max(2, Math.round((r.mixes / max) * 100));
+      return `<div class="summary-row${i === 0 ? ' lead' : ''}">
+        <div class="summary-avatar">${escapeHtml(r.ini)}</div>
+        <div class="summary-name"><strong>${escapeHtml(name || 'Not on the mixer list')}</strong><span>${r.orders.toLocaleString()} works ${r.orders === 1 ? 'order' : 'orders'}</span></div>
+        <div class="summary-bar" aria-hidden="true"><div class="summary-fill" style="width:${pct}%"></div></div>
+        <div class="summary-count">${r.mixes.toLocaleString()}</div>
+      </div>`;
+    }).join('');
+  }
 
   // ───────── Deep link: index.html#manager ─────────
   function checkHash() {
