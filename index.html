@@ -149,6 +149,7 @@
     letter-spacing: 0.02em;
   }
   .mixer-name { font-size: 0.95rem; font-weight: 600; text-align: center; line-height: 1.2; }
+  .build-id { margin-top: 14px; font-size: 0.72rem; color: rgba(255,255,255,0.5); letter-spacing: 0.04em; }
   .select-actions { display: flex; gap: 20px; margin-top: 22px; flex-wrap: wrap; justify-content: center; }
   .link-btn { background: none; border: none; color: rgba(255,255,255,0.88); font-weight: 600; font-size: 0.9rem; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; padding: 8px; }
   .link-btn:hover { color: white; }
@@ -253,7 +254,7 @@
   #printLabel .pl-customer { text-decoration: underline; }
   #printLabel .pl-date { font-weight: 400; text-transform: none; margin-top: 0.5mm; }
   #printLabel #plLogo { position: absolute; right: 2.6mm; bottom: 2.4mm; line-height: 1; }
-  #printLabel #plLogo img { display: block; height: 5.7mm; width: auto; }
+  #printLabel #plLogo img { display: block; width: 22mm; height: auto; }
   #printLabel #plLogo .pl-logo-text { font-family: Arial, 'Liberation Sans', sans-serif; font-weight: 900; font-style: italic; font-size: 17pt; letter-spacing: -0.5pt; }
 
   /* Printer test label (see Print test label) */
@@ -312,6 +313,7 @@
     <button type="button" class="link-btn" id="selectReprintBtn">Reprint a recent label</button>
     <button type="button" class="link-btn" id="selectManagerBtn">Manager login</button>
   </div>
+  <div class="build-id" id="buildId"></div>
 </div>
 
 <!-- ═══════════ MIX ENTRY ═══════════ -->
@@ -573,6 +575,7 @@
     { name: "Ryan P",     initials: "RP" }
   ];
 
+  const BUILD_ID = 'build 2026-10-07 e';     // shown bottom of the initials screen: confirms which version a PC is running
   const REQUIRE_ACCOUNT_NUMBER = false;      // set true to make Account Number mandatory
   const LOGO_URL = "";                       // e.g. "logo.png" once the company logo is supplied
   const REPRINT_STORAGE_KEY = 'paintmix.recentLabels.v1';
@@ -824,18 +827,24 @@
   // window.print() against a page sized 88mm x 36mm. See @media print CSS:
   // only #printLabel exists in print layout, so exactly one label is printed.
   const LABEL_FONT_PT = 10.2;                // existing label measures as Arial Bold ~10.2pt
-  const LABEL_PAD = { top: 3, right: 2.6, bottom: 2.4, left: 6.5 }; // mm, measured from the existing label
+  // Margins in mm. Left/top/bottom are measured from the existing label. Right is wider on purpose:
+  // on the test print the printer dropped everything beyond ~82mm of the 88mm label.
+  const LABEL_PAD = { top: 3, right: 7, bottom: 2.4, left: 6.5 };
   const LABEL_SHIFT_X_MM = 0;                // nudge all text right (+) or left (-) to correct printer offset
   const LABEL_SHIFT_Y_MM = 0;                // nudge all text down (+) or up (-)
   const LABEL_SPLIT_COLOUR_ON_SLASH = false; // true = also split a colour typed as "KIA H8G / DARK PENTA" onto two lines
   const LABEL_VARIANT_FIRST = true;          // prints "GR5987K STD SHADE" (variant, then shade)
-  const LABEL_LOGO_SRC = '';                 // data: URI or file path of the logo; empty = text placeholder
+  // FMF logo, traced from FMF_BW.jpg to a vector so it prints sharply at any printer resolution.
+  // Set to '' to fall back to the text placeholder below.
+  const LABEL_LOGO_SRC = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNTc2IDYyNyI+PHBhdGggZmlsbD0iIzAwMCIgZmlsbC1ydWxlPSJldmVub2RkIiBkPSJNNTU4LjgsNjI0LjFDNTkyLjgsNjA3LjkgNjM0LjgsNTYzLjEgNjU1LjYsNTIwLjZDNjY2LjEsNDk5LjEgNjcwLjQsNDgzLjEgNjcwLjQsNDY1LjBDNjcwLjUsNDM3LjYgNjU4LjksNDE4LjUgNjMzLjcsNDA1LjBDNjEwLjgsMzkyLjYgNTg1LjksMzg4LjAgNTMxLjUsMzg2LjBDNDA2LjEsMzgxLjMgMjk5LjksMzU3LjMgMjA4LjMsMzEzLjBDMTM1LjksMjc3LjkgNzguMCwyMzMuNyAzMS4wLDE3Ny41QzIwLjYsMTY1LjAgLTAuOCwxMzYuMCAwLjQsMTM2LjBDMC42LDEzNi4wIDQuOCwxMzguMyA5LjcsMTQxLjFDNTkuOSwxNzAuMyAxMzUuNiwyMDYuNCAxODYuOCwyMjUuN0MyOTkuMiwyNjcuOSAzODkuNSwyODQuOSA1NDkuNSwyOTQuMEM2MzIuNCwyOTguNyA2NTAuNiwzMDAuNyA2ODMuNSwzMDkuMEM3ODYuNiwzMzQuOCA4MTAuNCwzOTguNSA3NjAuMyw1MTQuMEM3MzYuNSw1NjguOSA3MTQuOCw1OTcuMyA2ODUuNSw2MTEuOEM2NjEuOSw2MjMuNSA2NDUuOCw2MjYuMCA1OTEuNSw2MjYuNkw1NTIuNSw2MjcuMEw1NTguOCw2MjQuMVogTTQ5NC4wLDYyNC40QzQ3Mi43LDYxOS45IDQ2NS44LDYwOC4wIDQ3NC4zLDU5MC43QzQ3Ny44LDU4My41IDQ4My4yLDU3Ny42IDQ5Ny41LDU2NS4yQzUwNC41LDU1OS4wIDUxMS4wLDU1MC41IDUxNC41LDU0My4wQzUxOC40LDUzNC40IDUxOC43LDUyMi45IDUxNS4yLDUxNi4yQzUwNi44LDUwMC4zIDQ4Ni40LDQ5Mi4yIDQ1MC41LDQ5MC41QzMzMS43LDQ4NC43IDI4My4xLDQ2Mi44IDIwNi43LDM4MC41QzE5My45LDM2Ni43IDE3My4yLDM0My4wIDE3MS44LDM0MC41QzE3MS40LDMzOS44IDE3Ni4xLDM0Mi4yIDE4Mi4zLDM0NS43QzIyMi45LDM2OS4xIDI3Ni43LDM4OC4zIDMzMi4xLDM5OS40QzM5Mi4xLDQxMS40IDQ1MC44LDQxNy4zIDU1NS41LDQyMi4wQzU3OS44LDQyMy4xIDU4MS4xLDQyMy4yIDU5Mi4zLDQyNi4xQzYxOS42LDQzMy4wIDYzMy41LDQ0OS42IDYzNC43LDQ3Ny4wQzYzNy4wLDUzMC42IDU4MS43LDYwNy45IDUyOS42LDYyMy45QzUyMS40LDYyNi40IDUwNC40LDYyNi43IDQ5NC4wLDYyNC40WiBNOTAxLjIsNjIyLjhDOTA5LjksNjA5LjUgOTEzLjAsNjA0LjIgOTE3LjUsNTk0LjZDOTIwLjQsNTg4LjUgOTI0LjYsNTc3LjggOTI2LjksNTcwLjdDOTMwLjIsNTYwLjIgOTc0LjksMzgyLjggMTAwNy4xLDI1Mi4yQzEwMjAuMywxOTguNSAxMDIxLjgsMTg1LjIgMTAxNy40LDE1OS43TDEwMTYuNywxNTYuMEwxMjE5LjQsMTU2LjBMMTQyMi4wLDE1Ni4wTDE0MjIuMCwxNTguOEMxNDIyLjAsMTYwLjMgMTQyMS42LDE2NS4zIDE0MjEuMCwxNzAuMEMxNDIwLjUsMTc0LjcgMTQxOC42LDE5My42IDE0MTYuOSwyMTIuMEMxNDE1LjIsMjMwLjQgMTQxMy43LDI0NS42IDE0MTMuNSwyNDUuOEMxNDEzLjMsMjQ2LjAgMTQwOS4wLDI0NC44IDE0MDMuOCwyNDMuMEMxMzc4LjEsMjM0LjUgMTM2OC44LDIzMy45IDEyNzEuNSwyMzQuMkwxMTkwLjUsMjM0LjVMMTE3Ny4zLDI4Ny4wQzExNzAuMSwzMTUuOSAxMTY0LjEsMzQwLjUgMTE2NC4xLDM0MS44TDExNjQuMCwzNDQuMEwxMjI1LjgsMzQ0LjBDMTMxMy4yLDM0My45IDEzMjguOCwzNDIuOSAxMzU5LjIsMzM1LjFDMTM2Ny40LDMzMy4wIDEzNzQuMCwzMzEuNyAxMzc0LjAsMzMyLjJDMTM3NC4wLDMzMy4xIDEzNDkuMCw0MzMuNCAxMzQ4LjcsNDMzLjZDMTM0OC42LDQzMy43IDEzNDQuMiw0MzIuNSAxMzM5LjAsNDMwLjhDMTMyOC41LDQyNy42IDEzMTUuNiw0MjQuNyAxMzAzLjUsNDIyLjlDMTI5OC4yLDQyMi4yIDEyNjkuOCw0MjEuNiAxMjE5LjgsNDIxLjNMMTE0NC4xLDQyMC44TDExNDMuMSw0MjQuN0MxMTM1LjksNDUyLjYgMTExMC40LDU1Ni4xIDExMDguNCw1NjUuM0MxMTA1LjEsNTgwLjkgMTEwNC4xLDYwNi42IDExMDYuMyw2MTcuOEwxMTA3LjcsNjI1LjBMMTAwMy43LDYyNS4wTDg5OS44LDYyNS4wTDkwMS4yLDYyMi44WiBNMTM1NC4xLDYxNS4zQzEzNzAuMyw1OTUuNyAxMzcyLjAsNTkwLjUgMTQwMi4wLDQ2OS41QzE0MDguNSw0NDMuMSAxNDI1LjMsMzc1LjQgMTQzOS40LDMxOS4wQzE0NjcuOSwyMDQuMSAxNDY5LjEsMTk4LjYgMTQ2OS4yLDE4NC41QzE0NjkuMywxNzQuOSAxNDY4LjIsMTY5LjggMTQ2My41LDE1Ny44QzE0NjIuOCwxNTYuMSAxNDY5LjAsMTU2LjAgMTU4NS4zLDE1Ni4wQzE2NTIuNywxNTYuMCAxNzA4LjEsMTU2LjQgMTcwOC40LDE1Ni44QzE3MDguNywxNTcuMyAxNzExLjAsMTgxLjkgMTcxMy41LDIxMS42QzE3MjMuMywzMjcuNiAxNzMxLjcsNDIxLjAgMTczMi4zLDQyMS43QzE3MzIuNyw0MjIuMCAxNzMzLjEsNDIyLjEgMTczMy4zLDQyMS45QzE3MzMuNSw0MjEuNyAxNzQwLjQsNDEwLjIgMTc0OC42LDM5Ni41QzE3NTYuOSwzODIuOCAxNzcwLjEsMzYwLjkgMTc3OC4wLDM0OC4wQzE3ODUuOCwzMzUuMSAxODAwLjIsMzExLjQgMTgwOS45LDI5NS41QzE4MTkuNiwyNzkuNSAxODQyLjYsMjQxLjYgMTg2MS4wLDIxMS4yTDE4OTQuNSwxNTYuMEwyMDEzLjgsMTU2LjBDMjA3OS4zLDE1Ni4wIDIxMzMuMCwxNTYuMyAyMTMzLjAsMTU2LjZDMjEzMy4wLDE1Ni45IDIxMzAuMywxNjEuMyAyMTI2LjksMTY2LjJDMjExMi41LDE4Ny44IDIxMDYuMCwyMDYuMyAyMDkwLjEsMjcxLjBDMjA4Ni4zLDI4Ni43IDIwNjguNywzNTcuMyAyMDUxLjEsNDI4LjBDMjAxOS4yLDU1Ni4xIDIwMTcuMSw1NjUuMCAyMDE0LjksNTgwLjlDMjAxMy42LDU5MC41IDIwMTQuMiw2MTMuMSAyMDE2LjEsNjE5LjhDMjAxNi43LDYyMi4xIDIwMTcuMSw2MjQuMyAyMDE2LjgsNjI0LjVDMjAxNi41LDYyNC44IDE5NjkuNyw2MjQuOSAxOTEyLjcsNjI0LjhMMTgwOS4wLDYyNC41TDE4MTMuNCw2MTguMEMxODIzLjgsNjAyLjQgMTgzMi43LDU4Mi40IDE4MzguOSw1NjAuNUMxODQ0LjgsNTM5LjcgMTkxNS4wLDI1Ni42IDE5MTQuMywyNTYuMUMxOTE0LjAsMjU1LjggMTkxMy41LDI1NS45IDE5MTMuMywyNTYuNUMxOTEzLjEsMjU3LjEgMTg2My4zLDM0MC4xIDE4MDIuNyw0NDEuMEwxNjkyLjUsNjI0LjVMMTYzMC4yLDYyNC44QzE1NjguNSw2MjUuMCAxNTY4LjAsNjI1LjAgMTU2OC4wLDYyMy4wQzE1NjguMCw2MjEuMiAxNTYyLjIsNTU3LjQgMTU1NS40LDQ4NS41QzE1NTAuMiw0MjkuMyAxNTQ0LjksMzcxLjYgMTUzOS45LDMxNi4wQzE1MzcuMSwyODQuNCAxNTM0LjYsMjU3LjggMTUzNC4zLDI1Ny4wQzE1MzMuMiwyNTMuOSAxNTM1LjIsMjQ2LjMgMTQ4MC40LDQ2Ny4wQzE0NTIuNCw1NzkuMyAxNDUyLjksNTc3LjMgMTQ1Mi4zLDU5My41QzE0NTEuOCw2MDUuNyAxNDUxLjksNjA3LjAgMTQ1NC40LDYxNC4wQzE0NTUuOSw2MTguMSAxNDU3LjMsNjIyLjMgMTQ1Ny43LDYyMy4yQzE0NTguMiw2MjQuOSAxNDU1LjEsNjI1LjAgMTQwMi4xLDYyNS4wTDEzNDYuMCw2MjUuMEwxMzU0LjEsNjE1LjNaIE0yMDU0LjAsNjI0LjVDMjA1NC4wLDYyNC4zIDIwNTYuOSw2MTkuNiAyMDYwLjUsNjE0LjFDMjA3NC44LDU5Mi4zIDIwNzguNSw1ODEuMyAyMDk5LjMsNDk5LjBDMjExNi41LDQzMC43IDIxNjUuNywyMzIuNiAyMTY4LjUsMjIwLjZDMjE3My4wLDIwMC42IDIxNzQuNCwxNzYuMCAyMTcxLjcsMTYzLjJDMjE3MC45LDE1OS44IDIxNzAuNiwxNTYuOCAyMTcwLjgsMTU2LjVDMjE3MS4xLDE1Ni4yIDIyNjIuNCwxNTYuMCAyMzczLjgsMTU2LjBMMjU3Ni4yLDE1Ni4wTDI1NzUuNiwxNjEuMkMyNTc1LjAsMTY2LjYgMjU3Mi4zLDE5NC40IDI1NjkuNCwyMjcuMEMyNTY4LjQsMjM3LjIgMjU2Ny42LDI0NS42IDI1NjcuNCwyNDUuOEMyNTY3LjMsMjQ2LjAgMjU2My4wLDI0NC44IDI1NTcuOCwyNDMuMUMyNTMwLjQsMjM0LjQgMjUyNS4yLDIzNC4wIDI0MjYuOCwyMzQuMEwyMzQ0LjIsMjM0LjBMMjMzMC43LDI4OC4yQzIzMjMuMywzMTguMSAyMzE3LjYsMzQyLjkgMjMxOC4wLDM0My40QzIzMTguNSwzNDMuOCAyMzUyLjMsMzQ0LjAgMjM5My4yLDM0My43QzI0NTQuOSwzNDMuMyAyNDY5LjYsMzQzLjAgMjQ4MC4wLDM0MS42QzI0OTMuMiwzMzkuOCAyNTEwLjMsMzM2LjMgMjUyMC43LDMzMy4xQzI1MjQuMiwzMzIuMCAyNTI3LjIsMzMxLjUgMjUyNy40LDMzMS45QzI1MjcuOCwzMzIuNSAyNTA0LjEsNDI4LjYgMjUwMi43LDQzMi40QzI1MDIuMiw0MzMuNiAyNTAwLjYsNDMzLjMgMjQ5My4xLDQzMC45QzI0NjUuOSw0MjIuMiAyNDQ3LjAsNDIwLjggMjM2MC41LDQyMS4yTDIyOTcuNSw0MjEuNUwyMjgxLjgsNDg0LjVDMjI2NC4wLDU1NS43IDIyNjAuNyw1NzAuNiAyMjU4LjksNTg3LjJDMjI1Ny44LDU5OC40IDIyNTguMyw2MTAuNSAyMjYwLjYsNjIxLjhMMjI2MS4yLDYyNS4wTDIxNTcuNiw2MjUuMEMyMTAwLjYsNjI1LjAgMjA1NC4wLDYyNC44IDIwNTQuMCw2MjQuNVogTTY0Ny41LDI1NS4wQzU0OS44LDI0Ny43IDQ2My4zLDE5OC4xIDQ0MS41LDEzNi44QzQzNi45LDEyMy43IDQzNS42LDExNS4zIDQzNi4zLDEwMS44QzQzOC41LDU0LjYgNDgyLjIsMTUuOCA1NTAuNCwwLjVDNTUzLjgsLTAuMiA1NTQuMSwtMC45IDU0NS40LDkuNkM1NDIuNSwxMy4wIDUzOC4wLDE5LjEgNTM1LjIsMjMuMUM0NjQuMiwxMjguNCA1MzkuMCwyNDEuMyA2ODcuMCwyNTIuMkM2OTkuMywyNTMuMiA3MDIuNSwyNTMuNiA2OTkuNSwyNTQuMkM2OTIuNywyNTUuMyA2NTkuMSwyNTUuOSA2NDcuNSwyNTUuMFogTTcyNC41LDI0MC41QzY2OC4zLDIzMy4xIDYyMi44LDIwOC45IDU5OS45LDE3NC4xQzU2Ni4xLDEyMi42IDU5NC41LDU1LjYgNjY2LjIsMTcuNUM2NzguMSwxMS4yIDY5MC43LDYuMCA2OTQuMSw2LjBDNjk3LjUsNi4wIDcyMy4zLDE0LjUgNzM1LjEsMTkuNUM3ODQuNiw0MC43IDgyMi44LDc0LjYgODM2LjksMTEwLjBDODU2LjEsMTU4LjIgODM0LjIsMjA0LjUgNzc5LjEsMjMyLjBDNzU3LjgsMjQyLjcgNzUwLjIsMjQzLjggNzI0LjUsMjQwLjVaIi8+PC9zdmc+';
   const LABEL_LOGO_PLACEHOLDER = 'FMF';      // shown only while LABEL_LOGO_SRC is empty; '' hides it
   const LABEL_HEIGHT_MM = 36;
   const MM_TO_PX = 96 / 25.4;
 
   function initLabelLogo() {
     const el = $('plLogo');
+    el.style.right = LABEL_PAD.right + 'mm';      // logo sits inside the same safe margin as the text
+    el.style.bottom = LABEL_PAD.bottom + 'mm';
     if (LABEL_LOGO_SRC) el.innerHTML = '<img alt="" src="' + escapeHtml(LABEL_LOGO_SRC) + '">';
     else if (LABEL_LOGO_PLACEHOLDER) el.innerHTML = '<div class="pl-logo-text">' + escapeHtml(LABEL_LOGO_PLACEHOLDER) + '</div>';
     else el.innerHTML = '';
@@ -908,6 +917,7 @@
     }
     g += `<text x="44" y="15" font-size="3.6" font-weight="700" text-anchor="middle" font-family="Arial,sans-serif">88 x 36 mm</text>`;
     g += `<text x="44" y="23.6" font-size="2.2" text-anchor="middle" font-family="Arial,sans-serif">Ticks are in mm. Border should touch the label edges.</text>`;
+    g += `<text x="44" y="28.4" font-size="2" text-anchor="middle" font-family="Arial,sans-serif">${BUILD_ID}</text>`;
     $('calSvg').innerHTML = g;
   }
   function printCalibration() {
@@ -1347,6 +1357,7 @@
   focusFirstBox();
   loadKnownMixers();
   initLabelLogo();
+  $('buildId').textContent = BUILD_ID;
 })();
 </script>
 
