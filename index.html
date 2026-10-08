@@ -264,6 +264,19 @@
   button.submit.danger-fill { background: var(--error); }
   button.submit.danger-fill:hover { background: #b92f2f; }
 
+  /* ── SPECIAL FORMULA SWITCH ── */
+  .switch-row { display: flex; align-items: center; gap: 14px; padding: 12px 14px; border: 2px solid var(--border); border-radius: 10px; background: var(--off-white); cursor: pointer; }
+  .switch-row input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+  .switch-track { position: relative; flex-shrink: 0; width: 52px; height: 30px; border-radius: 999px; background: #b8c9dc; transition: background 0.15s; }
+  .switch-thumb { position: absolute; top: 3px; left: 3px; width: 24px; height: 24px; border-radius: 50%; background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,0.3); transition: transform 0.15s; }
+  .switch-row input:checked + .switch-track { background: var(--brand); }
+  .switch-row input:checked + .switch-track .switch-thumb { transform: translateX(22px); }
+  .switch-row input:focus-visible + .switch-track { outline: 3px solid var(--accent); outline-offset: 2px; }
+  .switch-row:has(input:checked) { border-color: var(--brand); background: rgba(0,75,142,0.06); }
+  .switch-text strong { display: block; font-size: 0.95rem; }
+  .switch-text span { display: block; font-size: 0.78rem; color: var(--text-muted); }
+  #specialText { font-family: 'Barlow', sans-serif; margin-top: 10px; resize: vertical; }
+
   /* ── REPRINT MODAL ── */
   .modal-backdrop { position: fixed; inset: 0; background: rgba(13,27,42,0.55); display: none; align-items: center; justify-content: center; z-index: 800; padding: 20px; }
   .modal-backdrop.open { display: flex; }
@@ -405,6 +418,14 @@
           </div>
 
           <div class="field span2">
+            <label class="switch-row" for="specialFormula">
+              <input type="checkbox" id="specialFormula" role="switch" />
+              <span class="switch-track" aria-hidden="true"><span class="switch-thumb"></span></span>
+              <span class="switch-text"><strong>Special formula</strong><span>Tick to paste your own label text when you log this mix</span></span>
+            </label>
+          </div>
+
+          <div class="field span2">
             <label class="field-label" for="customer_name">Customer Name</label>
             <input type="text" id="customer_name" maxlength="200" required />
           </div>
@@ -450,7 +471,8 @@
 
           <div class="field span2">
             <label class="field-label" for="paint_system">Paint System</label>
-            <input type="text" id="paint_system" maxlength="100" required />
+            <div class="field-hint">Press Enter for a second line, e.g. HMG UB215, then C71 Brushing on the next line</div>
+            <textarea id="paint_system" rows="2" maxlength="200" required></textarea>
           </div>
 
           <div class="field span2">
@@ -701,6 +723,23 @@
   </div>
 </div>
 
+<!-- ═══════════ SPECIAL FORMULA LABEL ═══════════ -->
+<div class="modal-backdrop" id="specialModal">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="specialTitle">
+    <div class="modal-head">
+      <div class="modal-title" id="specialTitle">Special formula label</div>
+      <button type="button" class="modal-close" id="specialClose" aria-label="Close">&times;</button>
+    </div>
+    <div class="field-hint">Paste the special formula label information. This exact text is printed on the label instead of the details entered on the form. The mix is still logged with the form details, and this text is saved with it so it can be reprinted from the archive.</div>
+    <textarea id="specialText" rows="7" maxlength="1000" spellcheck="false" aria-label="Special formula label information"></textarea>
+    <div id="specialStatus" class="status" role="status"></div>
+    <div class="modal-actions">
+      <button type="button" class="secondary" id="specialCancel">Cancel</button>
+      <button type="button" class="submit" id="specialGo">Log mix and print label</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <!-- Label: laid out off-screen, shown alone when printing -->
@@ -733,7 +772,7 @@
     { name: "Ryan P",     initials: "RP" }
   ];
 
-  const BUILD_ID = 'build 2026-10-07 g';     // shown bottom of the initials screen: confirms which version a PC is running
+  const BUILD_ID = 'build 2026-10-08 b';     // shown bottom of the initials screen: confirms which version a PC is running
   const REQUIRE_ACCOUNT_NUMBER = false;      // set true to make Account Number mandatory
   const LOGO_URL = "";                       // e.g. "logo.png" once the company logo is supplied
   const REPRINT_STORAGE_KEY = 'paintmix.recentLabels.v1';
@@ -949,6 +988,32 @@
     if (!currentMixer) { setStatus(formStatus, 'Select a mixer first.', true); return; }
     if (!selectedStation) { setStatus(formStatus, 'Select a mixing station.', true); return; }
 
+    // Special formula: ask for the pasted label text first, then save + print.
+    if ($('specialFormula').checked) { openSpecial(); return; }
+    await saveAndPrint('');
+  });
+
+  // ── Special formula pop-up ──
+  function openSpecial() {
+    if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+    $('specialStatus').textContent = '';
+    $('specialModal').classList.add('open');
+    setTimeout(() => $('specialText').focus(), 0);
+  }
+  function closeSpecial() { $('specialModal').classList.remove('open'); }
+  $('specialClose').addEventListener('click', closeSpecial);
+  $('specialCancel').addEventListener('click', closeSpecial);
+  $('specialGo').addEventListener('click', async () => {
+    const text = $('specialText').value.replace(/\r/g, '').trim();
+    if (!text) { setStatus($('specialStatus'), 'Paste the special formula label information first.', true); $('specialText').focus(); return; }
+    $('specialGo').disabled = true;
+    const ok = await saveAndPrint(text);
+    $('specialGo').disabled = false;
+    if (ok) { closeSpecial(); $('specialText').value = ''; }
+    else closeSpecial(); // the save error is shown under the form
+  });
+
+  async function saveAndPrint(specialText) {
     const initials = currentMixer.initials;
 
     const record = {
@@ -965,12 +1030,21 @@
       additional_info: $('additional_info').value.trim() || null
     };
 
+    // Only sent for special formulas, so normal mixes still save even before the special_text column exists.
+    if (specialText) record.special_text = specialText;
+
     submitBtn.disabled = true;
     setStatus(formStatus, 'Saving…', false);
     const { error } = await supabaseClient.from('paint_mixes').insert(record);
     submitBtn.disabled = false;
 
-    if (error) { setStatus(formStatus, 'Save failed: ' + error.message + ' Nothing was printed. Try again.', true); return; }
+    if (error) {
+      const missingCol = specialText && /special_text/i.test(error.message || '');
+      setStatus(formStatus, missingCol
+        ? 'Save failed: the special_text column is missing in Supabase. Ask IT to run the setup SQL. Nothing was printed.'
+        : 'Save failed: ' + error.message + ' Nothing was printed. Try again.', true);
+      return false;
+    }
 
     // Saved. Keep a local copy of the label data for reprints on this PC.
     const labelRecord = Object.assign({}, record, { created_at: new Date().toISOString() });
@@ -979,7 +1053,8 @@
     goBackToMixerSelect();
     toast('Mix logged. Printing label…');
     setTimeout(() => printMixLabel(labelRecord), 60); // let the screen repaint first
-  });
+    return true;
+  }
 
   // ───────── Label printing ─────────
   // window.print() against a page sized 88mm x 36mm. See @media print CSS:
@@ -1019,15 +1094,25 @@
     const sv = (LABEL_VARIANT_FIRST ? [record.variant, record.shade] : [record.shade, record.variant])
       .map(x => String(x || '').trim()).filter(Boolean).join(' ');
     if (sv) lines.push(sv);
-    if (record.paint_system) lines.push(String(record.paint_system).trim());
+    // Each line typed in the Paint System box becomes its own label line.
+    String(record.paint_system || '').split(/\r?\n/)
+      .forEach(part => { part = part.trim(); if (part) lines.push(part); });
     if (record.amount) lines.push(String(record.amount).trim());
     return lines;
   }
 
   function printMixLabel(record) {
-    $('plCustomer').textContent = record.customer_name || '';
-    $('plBody').innerHTML = labelLines(record).map(l => '<div class="pl-line">' + escapeHtml(l) + '</div>').join('');
-    $('plDate').textContent = fmtDateLabel(record.created_at); // original mix date, so reprints match
+    if (record.special_text) {
+      // Special formula: print the pasted text only, one label line per pasted line.
+      $('plCustomer').textContent = '';
+      $('plBody').innerHTML = String(record.special_text).split(/\r?\n/).map(l => l.trim()).filter(Boolean)
+        .map(l => '<div class="pl-line">' + escapeHtml(l) + '</div>').join('');
+      $('plDate').textContent = '';
+    } else {
+      $('plCustomer').textContent = record.customer_name || '';
+      $('plBody').innerHTML = labelLines(record).map(l => '<div class="pl-line">' + escapeHtml(l) + '</div>').join('');
+      $('plDate').textContent = fmtDateLabel(record.created_at); // original mix date, so reprints match
+    }
     fitPrintLabel();
     window.print();
   }
@@ -1108,7 +1193,7 @@
       <div class="reprint-item">
         <div class="reprint-text">
           <div class="log-main">${escapeHtml(r.customer_name)}: ${escapeHtml(String(r.colour || '').replace(/\s*\n\s*/g, ' / '))}</div>
-          <div class="reprint-meta">${escapeHtml(r.amount)} · ${escapeHtml(r.paint_system)} · ${escapeHtml(fmtDateTime(r.created_at))} · ${escapeHtml(r.initials)}</div>
+          <div class="reprint-meta">${r.special_text ? 'SPECIAL FORMULA · ' : ''}${escapeHtml(r.amount)} · ${escapeHtml(String(r.paint_system || '').replace(/\s*\n\s*/g, ' / '))} · ${escapeHtml(fmtDateTime(r.created_at))} · ${escapeHtml(r.initials)}</div>
         </div>
         <button type="button" class="secondary small" data-i="${i}">Reprint</button>
       </div>`).join('');
@@ -1127,7 +1212,7 @@
   $('entryReprintBtn').addEventListener('click', openReprint);
   $('reprintClose').addEventListener('click', closeReprint);
   $('reprintModal').addEventListener('click', (e) => { if (e.target === $('reprintModal')) closeReprint(); });
-  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { closeReprint(); closeExport(); closeDelete(); closeRowDelete(); } });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { closeReprint(); closeExport(); closeDelete(); closeRowDelete(); closeSpecial(); } });
   $('reprintList').addEventListener('click', (e) => {
     const btn = e.target.closest('button[data-i]');
     if (!btn) return;
@@ -1338,8 +1423,9 @@
     { key: 'variant',         label: 'Variant',      cls: 'nowrap' },
     { key: 'number_of_mixes', label: 'Mixes',        cls: 'nowrap' },
     { key: 'amount',          label: 'Amount',       cls: 'nowrap' },
-    { key: 'paint_system',    label: 'Paint system', cls: 'wrap' },
-    { key: 'additional_info', label: 'Additional info', cls: 'wrap' }
+    { key: 'paint_system',    label: 'Paint system', cls: 'wrap pre' },
+    { key: 'additional_info', label: 'Additional info', cls: 'wrap' },
+    { key: 'special_text',    label: 'Special formula label', cls: 'wrap pre' }
   ];
 
   let archiveRows = [];
@@ -1475,9 +1561,10 @@
       ['Account no.', rec.account_number],
       ['Colour', String(rec.colour || '').replace(/\s*\n\s*/g, ' / ')],
       ['Shade / variant', [rec.variant, rec.shade].filter(Boolean).join(' ')],
-      ['Paint system', rec.paint_system],
+      ['Paint system', String(rec.paint_system || '').replace(/\s*\n\s*/g, ' / ')],
       ['Amount', rec.amount],
-      ['Number of mixes', rec.number_of_mixes]
+      ['Number of mixes', rec.number_of_mixes],
+      ['Special formula', String(rec.special_text || '').replace(/\s*\n\s*/g, ' / ')]
     ].filter(([, v]) => v !== null && v !== undefined && String(v).trim() !== '');
     $('rowDelDetails').innerHTML = '<dl class="detail-list">' + rows.map(([k, v]) => `<dt>${escapeHtml(k)}</dt><dd>${escapeHtml(v)}</dd>`).join('') + '</dl>';
     $('rowDelGo').disabled = false;
