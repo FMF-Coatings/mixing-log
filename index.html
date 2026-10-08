@@ -772,7 +772,7 @@
     { name: "Ryan P",     initials: "RP" }
   ];
 
-  const BUILD_ID = 'build 2026-10-08 b';     // shown bottom of the initials screen: confirms which version a PC is running
+  const BUILD_ID = 'build 2026-10-08 c';     // shown bottom of the initials screen: confirms which version a PC is running
   const REQUIRE_ACCOUNT_NUMBER = false;      // set true to make Account Number mandatory
   const LOGO_URL = "";                       // e.g. "logo.png" once the company logo is supplied
   const REPRINT_STORAGE_KEY = 'paintmix.recentLabels.v1';
@@ -1093,7 +1093,7 @@
       .forEach(part => { part = part.trim(); if (part) lines.push(part); });
     const sv = (LABEL_VARIANT_FIRST ? [record.variant, record.shade] : [record.shade, record.variant])
       .map(x => String(x || '').trim()).filter(Boolean).join(' ');
-    if (sv) lines.push(sv);
+    if (sv) lines.push(sv + ' Shade'); // label text is upper-cased by CSS, so prints as e.g. GR5987K STD SHADE
     // Each line typed in the Paint System box becomes its own label line.
     String(record.paint_system || '').split(/\r?\n/)
       .forEach(part => { part = part.trim(); if (part) lines.push(part); });
